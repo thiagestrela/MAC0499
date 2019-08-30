@@ -1,2 +1,2 @@
-# MAC0499
-mac0499 ime-usp 2019
+# MAC0499 - Trabalho de Formatura Supervisionado
+https://linux.ime.usp.br/~thiagestrela/mac0499/
