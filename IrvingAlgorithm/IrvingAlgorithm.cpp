@@ -18,7 +18,6 @@ int main() {
             if (x != -1) prefs[i].push_back(x);
         } while (x != -1);
     }
-
     vector<int> match = Irving(prefs);
     if (match.empty()) {
         printf("Instância sem solução\n");
@@ -27,7 +26,7 @@ int main() {
         printf("Emparelhamento estável encontrado:\n");
         for (int i = 0; i < V; i++) {
             if (match[i] != -1 and match[i] > i) {
-                printf("%d %d\n", i, match[i]);
+                printf("%d <-> %d\n", i, match[i]);
             }
         }
     }
@@ -58,7 +57,6 @@ vector<vector<int>> IrvingPhase1(const vector<vector<int>>& prefs) {
         if (prefs[i].size() >= 1)
             free_verts.push(i);
     }
-
     int w;
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < (int)prefs[i].size(); j++) {
@@ -67,11 +65,9 @@ vector<vector<int>> IrvingPhase1(const vector<vector<int>>& prefs) {
             Apos[i][w] = j;
         }
     }
-
     for (int i = 0; i < n; i++) {
         lists[i].assign(prefs[i].begin(), prefs[i].end());
     }
-
     while (!free_verts.empty()) {
         int v = free_verts.front(); free_verts.pop();
         int w;
@@ -79,6 +75,7 @@ vector<vector<int>> IrvingPhase1(const vector<vector<int>>& prefs) {
             lists[v].pop_front();
         }
         w = lists[v].front();
+        cout << v << " " << w << endl;
         if (int u = semi_engaged[w]; u != -1) {
             while (!lists[u].empty() and is_removed[u][lists[u].back()]) {
                 lists[u].pop_back();    
@@ -87,8 +84,10 @@ vector<vector<int>> IrvingPhase1(const vector<vector<int>>& prefs) {
                 free_verts.push(u);
             }
         }
+        printf("semi_engaged[%d] = %d\n", w, v);
         semi_engaged[w] = v;
         while (lists[w].back() != v) {
+            printf("%d removido da lista de %d\n", lists[w].back(), w);
             is_removed[w][lists[w].back()] = true;
             is_removed[lists[w].back()][w] = true;
             lists[w].pop_back();
@@ -102,35 +101,34 @@ vector<vector<int>> IrvingPhase1(const vector<vector<int>>& prefs) {
                 reduced_prefs[i].push_back(w);
         }
     }
-
     return reduced_prefs; 
 } 
 
-void fix_node(const int u, vector<deque<int>>& lists, vector<int>& second, const vector<vector<int>>& is_removed) {
+void fix_node(const int u, vector<deque<int>>& lists, const vector<vector<int>>& is_removed) {
     while (!lists[u].empty() and is_removed[u][lists[u].back()]) {
         lists[u].pop_back();
     }
     while (!lists[u].empty() and is_removed[u][lists[u].front()]) {
         lists[u].pop_front();
     }
-    if (lists[u].size() <= 1 or (lists[u].size() > 1 and second[u] == lists[u][1]))
+    if (lists[u].size() <= 1)
         return;
-    int s_idx = 1;
-    while (is_removed[u][lists[u][s_idx]]) {
-        s_idx++;
+    int fst_node = lists[u].front();
+    lists[u].pop_front();
+    while (!lists[u].empty() and is_removed[u][lists[u].front()]) {
+        lists[u].pop_front();
     }
-    second[u] = lists[u][s_idx];
-    assert(!is_removed[u][second[u]]);
+    lists[u].push_front(fst_node);
 }
 
-void remove_rotation(vector<deque<int>>& lists, vector<int>& second, vector<pair<int,int>>& rotation, vector<vector<int>>& is_removed, bool& emptylist) {
+void remove_rotation(vector<deque<int>>& lists, vector<pair<int,int>>& rotation, vector<vector<int>>& is_removed, bool& emptylist) {
     int n = rotation.size();
     cout << "Arestas removidas:" << endl;
     for (int i = 0; i < n; i++) {
         int y = rotation[i].second;
         int j = (i == 0 ? n - 1 : i - 1);
         int x = rotation[j].first;
-        fix_node(y, lists, second, is_removed);
+        fix_node(y, lists, is_removed);
         while (!lists[y].empty() and lists[y].back() != x) {
             printf("(%d, %d)\n", y, lists[y].back());
             is_removed[y][lists[y].back()] = true;
@@ -145,7 +143,7 @@ void remove_rotation(vector<deque<int>>& lists, vector<int>& second, vector<pair
 
     for (int i = 0; i < n; i++) {
         int y = rotation[i].second;
-        fix_node(y, lists, second, is_removed);
+        fix_node(y, lists, is_removed);
         if (lists[y].empty()) {
             emptylist = true;
             return;
@@ -186,14 +184,11 @@ vector<int> IrvingPhase2(const vector<vector<int>>& prefs, const vector<vector<i
     bool emptylist = false;
     vector<deque<int>> lists(n, deque<int>());
     vector<vector<int>> is_removed(n, vector<int>(n));
-    vector<int> second(n, -1);
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < (int)reduced_prefs[i].size(); j++) {
             int w = reduced_prefs[i][j];
             is_removed[i][w] = false;
         }
-        if (reduced_prefs[i].size() > 1)
-            second[i] = reduced_prefs[i][1];
     }
     for (int i = 0; i < n; i++) {
         lists[i].assign(reduced_prefs[i].begin(), reduced_prefs[i].end());
@@ -202,7 +197,7 @@ vector<int> IrvingPhase2(const vector<vector<int>>& prefs, const vector<vector<i
         if (st.empty()) { 
             while (u < n) {
                 cout << u << " " << lists[u].size() << endl;
-                fix_node(u, lists, second, is_removed);
+                fix_node(u, lists, is_removed);
                 if (lists[u].size() > 1) break;
                 u++;
             } 
@@ -212,14 +207,13 @@ vector<int> IrvingPhase2(const vector<vector<int>>& prefs, const vector<vector<i
         }
         else {
             int w = st.top(); 
-            fix_node(w, lists, second, is_removed);
-            assert(!is_removed[w][second[w]]);
-            w = lists[second[w]].back(); 
+            fix_node(w, lists, is_removed);
+            w = lists[lists[w][1]].back(); 
             while (!in_stack[w]) {
                 in_stack[w] = true;
                 st.push(w);
-                fix_node(w, lists, second, is_removed);
-                w = lists[second[w]].back();
+                fix_node(w, lists, is_removed);
+                w = lists[lists[w][1]].back();
             }
             int w2 = st.top(); st.pop(); in_stack[w2] = false;
             rotation.push_back(make_pair(w2, lists[w2].front()));
@@ -232,7 +226,7 @@ vector<int> IrvingPhase2(const vector<vector<int>>& prefs, const vector<vector<i
             for (auto x : rotation) {
                 printf("(%d, %d)\n", x.first, x.second);
             }
-            remove_rotation(lists, second, rotation, is_removed, emptylist);
+            remove_rotation(lists, rotation, is_removed, emptylist);
             assert(emptylist or rotation.empty());
         }
     }
